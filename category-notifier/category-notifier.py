@@ -41,6 +41,7 @@ class CategoryNotifier(commands.Cog):
         """Configure the category notifier"""
         await ctx.send_help(ctx.command)
 
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     @notifier.command(name="toggle")
     async def notifier_toggle(self, ctx):
         """Enable or disable the notifier"""
@@ -48,6 +49,7 @@ class CategoryNotifier(commands.Cog):
         await self._commit()
         await ctx.send(f"Category Notifier is now {'enabled' if self.config['enabled'] else 'disabled'}.")
 
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     @notifier.command(name="add")
     async def notifier_add(self, ctx, category: discord.CategoryChannel, role: discord.Role):
         """Link a category to a role"""
@@ -55,6 +57,7 @@ class CategoryNotifier(commands.Cog):
         await self._commit()
         await ctx.send(f"Linked category `{category.name}` to role `{role.name}`.")
 
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     @notifier.command(name="remove")
     async def notifier_remove(self, ctx, category: discord.CategoryChannel):
         """Remove a category link"""
@@ -65,6 +68,7 @@ class CategoryNotifier(commands.Cog):
         else:
             await ctx.send("This category isn't linked.")
 
+    @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
     @notifier.command(name="list")
     async def notifier_list(self, ctx):
         """List all category->role mappings"""
