@@ -53,12 +53,20 @@ class CustomModal(discord.ui.Modal):
     
             content = "\n".join(f"{i+1}. **{k}**\n> {v}" for i, (k, v) in enumerate(responses.items()))
 
-            await self.msg.edit(content=content)
-            await interaction.response.send_message("Thank you! Your form has been submitted.", ephemeral=True)
+            dummyMessage = DummyMessage(copy(self.thread._genesis_message))
+            dummyMessage.content = content
+
+            # clear message of residual attributes from the copy
+            dummyMessage.attachments = []
+            dummyMessage.components = []
+            dummyMessage.embeds = []
+            dummyMessage.stickers = []
+
+            await self.msg.reply(message=dummyMessage)
+            await interaction.response.defer()
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
             print(traceback.format_exc())
-
 
 class Dropdown(discord.ui.Select):
     def __init__(self, bot, msg, thread, config: dict, data: dict, is_home: bool):
@@ -83,7 +91,7 @@ class Dropdown(discord.ui.Select):
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
                 await interaction.response.send_modal(CustomModal(self.bot, self.thread, self.msg, modal_config))
                 await self.view.done()
-                return
+                return 
 
             await interaction.response.defer()
             await self.view.done()
