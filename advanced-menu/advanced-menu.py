@@ -52,7 +52,7 @@ class CustomModal(discord.ui.Modal):
             
             content = "\n".join(f"**{k}**: {v}" for k, v in responses.items())
 
-            dummyMessage = DummyMessage()
+            dummyMessage = DummyMessage({})
             dummyMessage.author = self.bot.modmail_guild.me
             dummyMessage.content = content
 
