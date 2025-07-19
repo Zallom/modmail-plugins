@@ -76,15 +76,20 @@ class Dropdown(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         try:
             # await interaction.response.send_message("You selected {}".format(self.values[0]))
+
+            if self.data[self.values[0].lower().replace(" ", "_")]["type"] == "modal":
+                modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
+                await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
+                await self.view.done()
+                return
+
             await interaction.response.defer()
             await self.view.done()
+
             if self.values[0] == "Main menu":
                 await self.msg.edit(view=DropdownView(self.bot, self.msg, self.thread, self.config, self.config["options"], True))
             elif self.data[self.values[0].lower().replace(" ", "_")]["type"] == "command":
                 await invoke_commands(self.data[self.values[0].lower().replace(" ", "_")]["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
-            elif self.data[self.values[0].lower().replace(" ", "_")]["type"] == "modal":
-                modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
-                await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
             else:
                 await self.msg.edit(view=DropdownView(self.bot, self.msg, self.thread, self.config, self.config["submenus"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]], False))
         except Exception as e:
