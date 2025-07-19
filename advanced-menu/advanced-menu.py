@@ -34,11 +34,10 @@ async def invoke_commands(alias, bot, thread, message):
             continue
 
 class CustomModal(discord.ui.Modal):
-    def __init__(self, bot, thread, msg, config):
+    def __init__(self, bot, thread, config):
         super().__init__(title=config["title"])
         self.bot = bot
         self.thread = thread
-        self.msg = msg
         for idx, field in enumerate(config["fields"][:5]):
             self.add_item(discord.ui.TextInput(
                 label=field["label"],
@@ -62,7 +61,7 @@ class CustomModal(discord.ui.Modal):
             dummyMessage.embeds = []
             dummyMessage.stickers = []
 
-            await self.msg.reply(message=dummyMessage)
+            await self.thread.reply(message=dummyMessage)
             await interaction.response.defer()
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
@@ -89,7 +88,7 @@ class Dropdown(discord.ui.Select):
 
             if self.data[self.values[0].lower().replace(" ", "_")]["type"] == "modal":
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
-                await interaction.response.send_modal(CustomModal(self.bot, self.thread, self.msg, modal_config))
+                await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
                 await self.view.done()
                 return 
 
