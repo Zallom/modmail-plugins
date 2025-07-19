@@ -56,7 +56,6 @@ class CustomModal(discord.ui.Modal):
             dummyMessage.content = content
 
             # clear message of residual attributes from the copy
-            dummyMessage.author = None
             dummyMessage.attachments = []
             dummyMessage.components = []
             dummyMessage.embeds = [{
