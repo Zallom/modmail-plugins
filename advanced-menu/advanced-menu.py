@@ -52,11 +52,17 @@ class CustomModal(discord.ui.Modal):
             
             content = "\n".join(f"**{k}**: {v}" for k, v in responses.items())
 
-            dummyMessage = DummyMessage({})
+            dummyMessage = DummyMessage(copy(self.thread._genesis_message))
             dummyMessage.author = self.bot.modmail_guild.me
             dummyMessage.content = content
 
-            await self.thread.reply(dummyMessage)
+            # clear message of residual attributes from the copy
+            dummyMessage.attachments = []
+            dummyMessage.components = []
+            dummyMessage.embeds = []
+            dummyMessage.stickers = []
+
+            await self.thread.reply(message=dummyMessage)
             await interaction.response.send_message("Thank you! Your form has been submitted.", ephemeral=True)
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
