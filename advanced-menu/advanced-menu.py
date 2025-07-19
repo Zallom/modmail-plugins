@@ -49,11 +49,10 @@ class CustomModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         try:
             responses = {item.label: item.value for item in self.children}
-            
-            content = "\n".join(f"**{k}**: {v}" for k, v in responses.items())
+    
+            content = "\n".join(f"{i+1}. **{k}**\n> {v}" for i, (k, v) in enumerate(responses.items()))
 
             dummyMessage = DummyMessage(copy(self.thread._genesis_message))
-            dummyMessage.author = self.bot.modmail_guild.me
             dummyMessage.content = content
 
             # clear message of residual attributes from the copy
