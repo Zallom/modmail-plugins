@@ -28,6 +28,16 @@ class CategoryNotifier(commands.Cog):
         if not self.config["enabled"]:
             return
 
+        if not isinstance(after, discord.TextChannel):
+            return
+
+        if before.category_id == after.category_id:
+            return
+
+        thread = await self.bot.threads.find(channel=after)
+        if not thread:
+            return
+
         cat = after.category
         if cat and str(cat.id) in self.config["mappings"]:
             role_id = int(self.config["mappings"][str(cat.id)])
