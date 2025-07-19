@@ -56,9 +56,12 @@ class CustomModal(discord.ui.Modal):
             dummyMessage.content = content
 
             # clear message of residual attributes from the copy
+            dummyMessage.author = None
             dummyMessage.attachments = []
             dummyMessage.components = []
-            dummyMessage.embeds = []
+            dummyMessage.embeds = [{
+                "description": content
+            }]
             dummyMessage.stickers = []
 
             await self.thread.reply(message=dummyMessage)
@@ -91,7 +94,7 @@ class Dropdown(discord.ui.Select):
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
                 await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
                 await self.view.done()
-                return
+                return 
 
             await interaction.response.defer()
             await self.view.done()
@@ -117,7 +120,7 @@ class DropdownView(discord.ui.View):
     async def on_timeout(self):
         await self.msg.edit(view=None)
         if self.config["close_on_timeout"]:
-            await invoke_commands("close The menu selection timed out.", self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+            await invoke_commands(f"close {self.config['close_on_timeout_message']}", self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
 
     async def done(self):
         self.stop()
@@ -128,7 +131,17 @@ class AdvancedMenu(commands.Cog):
         self.bot = bot
         self.db = self.bot.plugin_db.get_partition(self)
         self.config = None
-        self.default_config = {"enabled": False, "options": {}, "submenus": {}, "timeout": 20, "close_on_timeout": False, "anonymous_menu": False, "embed_text": "Please select an option.", "dropdown_placeholder": "Select an option to contact the staff team."}
+        self.default_config = {
+            "enabled": False,
+            "options": {},
+            "submenus": {},
+            "timeout": 20,
+            "close_on_timeout": False,
+            "close_on_timeout_message": "The menu selection timed out.",
+            "anonymous_menu": False,
+            "embed_text": "Please select an option.",
+            "dropdown_placeholder": "Select an option to contact the staff team."
+        }
 
     async def cog_load(self):
         self.config = await self.db.find_one({"_id": "advanced-menu"})
