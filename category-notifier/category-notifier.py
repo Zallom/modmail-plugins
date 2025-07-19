@@ -80,7 +80,7 @@ class CategoryNotifier(commands.Cog):
             role = ctx.guild.get_role(int(role_id))
             if cat and role:
                 lines.append(f"{cat.name} → {role.mention}")
-        await ctx.send("\n".join(lines))
+        await ctx.send("\n".join(lines), allowed_mentions=discord.AllowedMentions.none())
 
     async def _commit(self):
         await self.db.find_one_and_update(
