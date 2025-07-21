@@ -63,6 +63,10 @@ class CustomModal(discord.ui.Modal):
 
             await self.thread.reply(message=dummyMessage)
             await interaction.response.defer()
+
+            if config["type"] == "command":
+                await invoke_commands(config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
             print(traceback.format_exc())
