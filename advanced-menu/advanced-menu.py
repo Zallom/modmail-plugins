@@ -65,8 +65,6 @@ class CustomModal(discord.ui.Modal):
             await self.thread.reply(message=dummyMessage)
             await interaction.response.defer()
 
-            print(self.config["type"])
-
             if self.config["type"] == "command":
                 await invoke_commands(self.config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
 
@@ -95,7 +93,6 @@ class Dropdown(discord.ui.Select):
 
             if self.data[self.values[0].lower().replace(" ", "_")]["type"] == "modal":
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
-                print(modal_config)
                 await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
                 await self.view.done()
                 return 
