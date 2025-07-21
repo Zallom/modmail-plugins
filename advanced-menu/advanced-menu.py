@@ -38,6 +38,7 @@ class CustomModal(discord.ui.Modal):
         super().__init__(title=config["title"])
         self.bot = bot
         self.thread = thread
+        self.config = config
         for idx, field in enumerate(config["fields"][:5]):
             self.add_item(discord.ui.TextInput(
                 label=field["label"],
