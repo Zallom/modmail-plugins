@@ -53,45 +53,6 @@ class CustomModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         try:
             responses = {item.label: item.value for item in self.children}
-    
-            content = "\n".join(f"{i+1}. **{k}**\n> {v}" for i, (k, v) in enumerate(responses.items()))
-
-            dummyMessage = DummyMessage(copy(self.thread._genesis_message))
-            dummyMessage.content = content
-
-            # clear message of residual attributes from the copy
-            dummyMessage.attachments = []
-            dummyMessage.components = []
-            dummyMessage.embeds = []
-            dummyMessage.stickers = []
-
-            await self.thread.reply(message=dummyMessage)
-            await interaction.response.defer()
-
-            if self.config["type"] == "command":
-                await invoke_commands(self.config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
-
-        except Exception:
-            await interaction.response.send_message("An error occurred.", ephemeral=True)
-            print(traceback.format_exc())
-
-class CustomModal(discord.ui.Modal):
-    def __init__(self, bot, thread, config):
-        super().__init__(title=config["title"])
-        self.bot = bot
-        self.thread = thread
-        self.config = config
-        for idx, field in enumerate(config["fields"][:5]):
-            self.add_item(discord.ui.TextInput(
-                label=field["label"],
-                placeholder=field.get("placeholder", ""),
-                style=discord.TextStyle.long if field.get("style", 1) == 2 else discord.TextStyle.short,
-                custom_id=f"field_{idx}"
-            ))
-
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            responses = {item.label: item.value for item in self.children}
 
             await interaction.response.defer()
             
@@ -103,7 +64,7 @@ class CustomModal(discord.ui.Modal):
             if embed_config:
                 custom_embed = discord.Embed(
                     title=modal_config.get("title", "Form Submission"),
-                    description=embed_config.get("description", ""),
+                    description=self.bot.formatter.format(embed_config.get("description", ""), recipient=self.thread.recipient),
                     color=int(embed_config.get("color", str(self.bot.main_color)), 16) if isinstance(embed_config.get("color"), str) else embed_config.get("color", self.bot.main_color)
                 )
 
