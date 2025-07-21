@@ -72,6 +72,190 @@ class CustomModal(discord.ui.Modal):
             await interaction.response.send_message("An error occurred.", ephemeral=True)
             print(traceback.format_exc())
 
+class CustomModal(discord.ui.Modal):
+    def __init__(self, bot, thread, config):
+        super().__init__(title=config["title"])
+        self.bot = bot
+        self.thread = thread
+        self.config = config
+        for idx, field in enumerate(config["fields"][:5]):
+            self.add_item(discord.ui.TextInput(
+                label=field["label"],
+                placeholder=field.get("placeholder", ""),
+                style=discord.TextStyle.long if field.get("style", 1) == 2 else discord.TextStyle.short,
+                custom_id=f"field_{idx}"
+            ))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            responses = {item.label: item.value for item in self.children}
+
+            await interaction.response.defer()
+            
+            modal_config = self.config
+            
+            embed_config = modal_config.get("response_embed")
+            embeds = []
+
+            if embed_config:
+                custom_embed = discord.Embed(
+                    title=modal_config.get("title", "Form Submission"),
+                    description=embed_config.get("description", ""),
+                    color=int(embed_config.get("color", str(self.bot.main_color)), 16) if isinstance(embed_config.get("color"), str) else embed_config.get("color", self.bot.main_color)
+                )
+
+                custom_embed.set_author(
+                    name=self.thread.modmail_guild.name,
+                    icon_url=self.thread.modmail_guild.icon.url
+                )
+
+                footer_config = embed_config.get("footer", {})
+                if footer_config and footer_config.get("text"):
+                    custom_embed.set_footer(
+                        text=footer_config.get("text", ""),
+                        icon_url=footer_config.get("icon_url", "")
+                    )
+
+                thumbnail_url = embed_config.get("thumbnail_url")
+                if thumbnail_url:
+                    custom_embed.set_thumbnail(url=thumbnail_url)
+
+                image_url = embed_config.get("image_url")
+                if image_url:
+                    custom_embed.set_image(url=image_url)
+
+                if embed_config.get("show_timestamp", False):
+                    custom_embed.timestamp = discord.utils.utcnow()
+                
+                embeds.append(custom_embed)
+            
+            responses_embed = discord.Embed(
+                color=int(embed_config.get("color", str(self.bot.main_color)), 16) if isinstance(embed_config.get("color"), str) else embed_config.get("color", self.bot.main_color)
+            )
+            
+            for i, (label, value) in enumerate(responses.items()):
+                responses_embed.add_field(
+                    name=f'{i+1}. {label}', 
+                    value=value,
+                    inline=False
+                )
+                
+            responses_embed.set_footer(
+                text=self.bot.modmail_guild.name
+            )
+
+            embeds.append(responses_embed)
+
+            anonymous = modal_config.get("anonymous", False)
+            
+            await self.raw_reply_multiple(embeds, anonymous=anonymous)
+
+            if self.config["type"] == "command":
+                await invoke_commands(self.config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+        except Exception:
+            await interaction.response.send_message("An error occurred.", ephemeral=True)
+            print(traceback.format_exc())
+
+    async def raw_reply_multiple(self, embeds: list, *, anonymous: bool = False):
+        """
+        Envoie plusieurs embeds en tant que réponse
+        """
+        try:
+            # Vérifier que les destinataires sont toujours accessibles
+            for guild in self.bot.guilds:
+                try:
+                    if await self.bot.get_or_fetch_member(guild, self.thread.id):
+                        break
+                except discord.NotFound:
+                    pass
+            else:
+                if self.thread.channel:
+                    await self.thread.channel.send(
+                        embed=discord.Embed(
+                            color=self.bot.error_color,
+                            description="Your message could not be delivered since "
+                            "the recipient shares no servers with the bot.",
+                        )
+                    )
+                return
+
+            user_msg_tasks = []
+            tasks = []
+
+            # Créer l'URL pour le joint ID
+            joint_id = discord.utils.utcnow().timestamp()
+            joint_url = f"https://discordapp.com/channels/{self.bot.guild.id}#{int(joint_id * 1000)}"
+
+            # Modifier le premier embed pour inclure l'URL dans l'auteur si nécessaire
+            if embeds and embeds[0].author.url == discord.Embed.Empty:
+                embeds[0].set_author(
+                    name=embeds[0].author.name or "",
+                    icon_url=embeds[0].author.icon_url or "",
+                    url=joint_url
+                )
+
+            # Envoyer aux destinataires
+            for user in self.thread.recipients:
+                user_msg_tasks.append(user.send(embeds=embeds))
+
+            try:
+                user_msgs = await asyncio.gather(*user_msg_tasks)
+            except Exception as e:
+                print(f"Message delivery failed: {e}")
+                user_msgs = None
+                description = (
+                    "Your message could not be delivered due "
+                    "to an unknown error. Check debug for "
+                    "more information"
+                )
+                if self.thread.channel:
+                    await self.thread.channel.send(
+                        embed=discord.Embed(
+                            color=self.bot.error_color,
+                            description=description,
+                        )
+                    )
+            else:
+                # Envoyer dans le channel du thread
+                if self.thread.channel:
+                    thread_msg = await self.thread.channel.send(embeds=embeds)
+                    
+                    # Log l'activité
+                    tasks.append(
+                        self.bot.api.append_log(
+                            DummyMessage(None),
+                            message_id=thread_msg.id,
+                            channel_id=self.thread.channel.id,
+                            type_="anonymous" if anonymous else "thread_message",
+                        )
+                    )
+
+                # Annuler la fermeture programmée si un message est envoyé
+                if self.thread.close_task is not None:
+                    await self.thread.cancel_closure()
+                    if self.thread.channel:
+                        tasks.append(
+                            self.thread.channel.send(
+                                embed=discord.Embed(
+                                    color=self.bot.error_color,
+                                    description="Scheduled close has been cancelled.",
+                                )
+                            )
+                        )
+
+            if tasks:
+                await asyncio.gather(*tasks)
+
+        except Exception as e:
+            print(f"Erreur dans raw_reply_multiple: {e}")
+
+    async def raw_reply(self, embed: discord.Embed, *, anonymous: bool = False):
+        """
+        Envoie un embed en tant que réponse (version simple)
+        """
+        return await self.raw_reply_multiple([embed], anonymous=anonymous)
+
+
 class Dropdown(discord.ui.Select):
     def __init__(self, bot, msg, thread, config: dict, data: dict, is_home: bool):
         self.bot = bot
