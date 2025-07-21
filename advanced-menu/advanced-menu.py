@@ -222,7 +222,7 @@ class CustomModal(discord.ui.Modal):
                 # Log l'activité
                 tasks.append(
                     self.bot.api.append_log(
-                        DummyMessage(None),
+                        message=thread_msg,
                         message_id=thread_msg.id,
                         channel_id=self.thread.channel.id,
                         type_="anonymous" if anonymous else "thread_message",
