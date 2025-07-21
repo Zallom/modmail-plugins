@@ -6,8 +6,10 @@ from discord.ext.commands.view import StringView
 import json
 
 from core import checks
-from core.models import DummyMessage, PermissionLevel
+from core.models import DummyMessage, PermissionLevel, getLogger
 from core.utils import normalize_alias
+
+logger = getLogger(__name__)
 
 async def invoke_commands(alias, bot, thread, message):
     ctxs = []
@@ -152,6 +154,7 @@ class CustomModal(discord.ui.Modal):
 
             if self.config["type"] == "command":
                 await invoke_commands(self.config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
             print(traceback.format_exc())
@@ -160,100 +163,87 @@ class CustomModal(discord.ui.Modal):
         """
         Envoie plusieurs embeds en tant que réponse
         """
-        try:
-            # Vérifier que les destinataires sont toujours accessibles
-            for guild in self.bot.guilds:
-                try:
-                    if await self.bot.get_or_fetch_member(guild, self.thread.id):
-                        break
-                except discord.NotFound:
-                    pass
-            else:
-                if self.thread.channel:
-                    await self.thread.channel.send(
-                        embed=discord.Embed(
-                            color=self.bot.error_color,
-                            description="Your message could not be delivered since "
-                            "the recipient shares no servers with the bot.",
-                        )
-                    )
-                return
-
-            user_msg_tasks = []
-            tasks = []
-
-            # Créer l'URL pour le joint ID
-            joint_id = discord.utils.utcnow().timestamp()
-            joint_url = f"https://discordapp.com/channels/{self.bot.guild.id}#{int(joint_id * 1000)}"
-
-            # Modifier le premier embed pour inclure l'URL dans l'auteur si nécessaire
-            if embeds and embeds[0].author.url == discord.Embed.Empty:
-                embeds[0].set_author(
-                    name=embeds[0].author.name or "",
-                    icon_url=embeds[0].author.icon_url or "",
-                    url=joint_url
-                )
-
-            # Envoyer aux destinataires
-            for user in self.thread.recipients:
-                user_msg_tasks.append(user.send(embeds=embeds))
-
+        # Vérifier que les destinataires sont toujours accessibles
+        for guild in self.bot.guilds:
             try:
-                user_msgs = await asyncio.gather(*user_msg_tasks)
-            except Exception as e:
-                print(f"Message delivery failed: {e}")
-                user_msgs = None
+                if await self.bot.get_or_fetch_member(guild, self.thread.id):
+                    break
+            except discord.NotFound:
+                pass
+        else:
+            if self.thread.channel:
+                await self.thread.channel.send(
+                    embed=discord.Embed(
+                        color=self.bot.error_color,
+                        description="Your message could not be delivered since "
+                        "the recipient shares no servers with the bot.",
+                    )
+                )
+            return
+
+        user_msg_tasks = []
+        tasks = []
+
+        # Envoyer aux destinataires
+        for user in self.thread.recipients:
+            user_msg_tasks.append(user.send(embeds=embeds))
+
+        try:
+            user_msg = await asyncio.gather(*user_msg_tasks)
+        except Exception as e:
+            logger.error(f"Message delivery failed: {e}")
+            user_msg = None
+            if isinstance(e, discord.Forbidden):
+                description = (
+                    "Your message could not be delivered as "
+                    "the recipient is only accepting direct "
+                    "messages from friends, or the bot was "
+                    "blocked by the recipient."
+                )
+            else:
                 description = (
                     "Your message could not be delivered due "
-                    "to an unknown error. Check debug for "
+                    "to an unknown error. Check `?debug` for "
                     "more information"
                 )
-                if self.thread.channel:
-                    await self.thread.channel.send(
-                        embed=discord.Embed(
-                            color=self.bot.error_color,
-                            description=description,
-                        )
+            if self.thread.channel:
+                thread_msg = await self.thread.channel.send(
+                    embed=discord.Embed(
+                        color=self.bot.error_color,
+                        description=description,
                     )
-            else:
-                # Envoyer dans le channel du thread
-                if self.thread.channel:
-                    thread_msg = await self.thread.channel.send(embeds=embeds)
-                    
-                    # Log l'activité
-                    tasks.append(
-                        self.bot.api.append_log(
-                            DummyMessage(None),
-                            message_id=thread_msg.id,
-                            channel_id=self.thread.channel.id,
-                            type_="anonymous" if anonymous else "thread_message",
-                        )
+                )
+        else:
+            # Envoyer dans le channel du thread
+            if self.thread.channel:
+                thread_msg = await self.thread.channel.send(embeds=embeds)
+                
+                # Log l'activité
+                tasks.append(
+                    self.bot.api.append_log(
+                        DummyMessage(None),
+                        message_id=thread_msg.id,
+                        channel_id=self.thread.channel.id,
+                        type_="anonymous" if anonymous else "thread_message",
                     )
+                )
 
-                # Annuler la fermeture programmée si un message est envoyé
-                if self.thread.close_task is not None:
-                    await self.thread.cancel_closure()
-                    if self.thread.channel:
-                        tasks.append(
-                            self.thread.channel.send(
-                                embed=discord.Embed(
-                                    color=self.bot.error_color,
-                                    description="Scheduled close has been cancelled.",
-                                )
+            # Annuler la fermeture programmée si un message est envoyé
+            if self.thread.close_task is not None:
+                await self.thread.cancel_closure()
+                if self.thread.channel:
+                    tasks.append(
+                        self.thread.channel.send(
+                            embed=discord.Embed(
+                                color=self.bot.error_color,
+                                description="Scheduled close has been cancelled.",
                             )
                         )
+                    )
 
-            if tasks:
-                await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
-        except Exception as e:
-            print(f"Erreur dans raw_reply_multiple: {e}")
-
-    async def raw_reply(self, embed: discord.Embed, *, anonymous: bool = False):
-        """
-        Envoie un embed en tant que réponse (version simple)
-        """
-        return await self.raw_reply_multiple([embed], anonymous=anonymous)
+        return (user_msg, thread_msg)
 
 
 class Dropdown(discord.ui.Select):
