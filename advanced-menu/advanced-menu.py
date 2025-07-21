@@ -105,8 +105,8 @@ class CustomModal(discord.ui.Modal):
                 )
 
                 custom_embed.set_author(
-                    name=self.thread.modmail_guild.name,
-                    icon_url=self.thread.modmail_guild.icon.url
+                    name=self.bot.modmail_guild.name,
+                    icon_url=self.bot.modmail_guild.icon.url
                 )
 
                 footer_config = embed_config.get("footer", {})
