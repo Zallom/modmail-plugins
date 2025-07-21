@@ -1,4 +1,5 @@
 from copy import copy
+import asyncio
 import traceback
 import discord
 from discord.ext import commands
