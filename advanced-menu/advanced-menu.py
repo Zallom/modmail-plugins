@@ -180,24 +180,27 @@ class CustomModal(discord.ui.Modal):
             if self.thread.channel:
                 thread_msg = await self.thread.channel.send(embeds=embeds)
 
+                content_parts = []
+
                 for embed in embeds:
                     if embed.description:
-                        thread_msg.content = f"**{embed.title}**\n\n{embed.description}"
+                        content_parts.append(f"**{embed.title}**\n\n{embed.description}")
                     else:
-                        content_parts = []
                         for field in embed.fields:
                             content_parts.append(f"**{field.name}**\n{field.value}")
-                        thread_msg.content = "\n\n".join(content_parts)
 
-                    # Log the activity
-                    tasks.append(
-                        self.bot.api.append_log(
-                            message=thread_msg,
-                            message_id=thread_msg.id,
-                            channel_id=self.thread.channel.id,
-                            type_="system",
-                        )
+                thread_msg.content = "\n\n".join(content_parts)
+
+                # Log the activity
+
+                tasks.append(
+                    self.bot.api.append_log(
+                        message=thread_msg,
+                        message_id=thread_msg.id,
+                        channel_id=self.thread.channel.id,
+                        type_="system",
                     )
+                )
 
             # Cancel scheduled closure if a message is sent
             if self.thread.close_task is not None:
