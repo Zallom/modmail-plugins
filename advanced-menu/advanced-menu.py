@@ -311,7 +311,7 @@ class AdvancedMenu(commands.Cog):
             # Auto move contact threads if enabled (threads created with contact command)
             if self.config["auto_move_contact_threads"] and self.config["contact_category_id"]:
                 try:
-                    await invoke_commands(f"move {self.config['contact_category_id']}", self.bot, thread, DummyMessage(copy(initial_message)))
+                    await invoke_commands(f"move {self.config['contact_category_id']}", self.bot, thread, DummyMessage(copy(thread._genesis_message)))
                 except Exception as e:
                     logger.error(f"Failed to move thread to contact category: {e}")
         elif self.config["enabled"] and self.config["options"] != {}:
