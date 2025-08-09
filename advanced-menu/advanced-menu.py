@@ -307,11 +307,6 @@ class AdvancedMenu(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_ready(self, thread, creator, category, initial_message):
-        logger.info(thread)
-        logger.info(creator)
-        logger.info(category)
-        logger.info(initial_message)
-        
         # Auto move contact threads if enabled (threads created with contact command)
         if self.config.get("auto_move_contact_threads", False) and self.config.get("contact_category_id"):
             # Check if this is a contact thread (created by staff, not by user DM)
