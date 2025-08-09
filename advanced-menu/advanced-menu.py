@@ -123,9 +123,9 @@ class CustomModal(discord.ui.Modal):
 
     async def raw_reply_multiple(self, embeds: list, *, anonymous: bool = False):
         """
-        Envoie plusieurs embeds en tant que réponse
+        Send multiple embeds as a response
         """
-        # Vérifier que les destinataires sont toujours accessibles
+        # Check that recipients are still accessible
         for guild in self.bot.guilds:
             try:
                 if await self.bot.get_or_fetch_member(guild, self.thread.id):
@@ -146,7 +146,7 @@ class CustomModal(discord.ui.Modal):
         user_msg_tasks = []
         tasks = []
 
-        # Envoyer aux destinataires
+        # Send to recipients
         for user in self.thread.recipients:
             user_msg_tasks.append(user.send(embeds=embeds))
 
@@ -176,11 +176,11 @@ class CustomModal(discord.ui.Modal):
                     )
                 )
         else:
-            # Envoyer dans le channel du thread
+            # Send to the thread channel
             if self.thread.channel:
                 thread_msg = await self.thread.channel.send(embeds=embeds)
                 
-                # Log l'activité
+                # Log the activity
                 tasks.append(
                     self.bot.api.append_log(
                         message=thread_msg,
@@ -190,7 +190,7 @@ class CustomModal(discord.ui.Modal):
                     )
                 )
 
-            # Annuler la fermeture programmée si un message est envoyé
+            # Cancel scheduled closure if a message is sent
             if self.thread.close_task is not None:
                 await self.thread.cancel_closure()
                 if self.thread.channel:
