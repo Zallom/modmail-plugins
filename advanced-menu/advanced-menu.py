@@ -277,7 +277,9 @@ class AdvancedMenu(commands.Cog):
             "close_on_timeout_message": "The menu selection timed out.",
             "anonymous_menu": False,
             "embed_text": "Please select an option.",
-            "dropdown_placeholder": "Select an option to contact the staff team."
+            "dropdown_placeholder": "Select an option to contact the staff team.",
+            "auto_move_contact_threads": False,
+            "contact_category_id": None
         }
 
     async def cog_load(self):
@@ -305,6 +307,25 @@ class AdvancedMenu(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_ready(self, thread, creator, category, initial_message):
+        logger.info(thread)
+        logger.info(creator)
+        logger.info(category)
+        logger.info(initial_message)
+        
+        # Auto move contact threads if enabled (threads created with contact command)
+        if self.config.get("auto_move_contact_threads", False) and self.config.get("contact_category_id"):
+            # Check if this is a contact thread (created by staff, not by user DM)
+            is_contact_thread = (creator is not None and creator != thread.recipient and hasattr(creator, 'guild_permissions'))
+            
+            if is_contact_thread:
+                try:
+                    contact_category = self.bot.modmail_guild.get_channel(self.config["contact_category_id"])
+                    if contact_category and thread.channel and thread.channel.category != contact_category:
+                        await thread.channel.edit(category=contact_category)
+                        logger.info(f"Moved contact thread {thread.channel.name} to category {contact_category.name}")
+                except Exception as e:
+                    logger.error(f"Failed to move thread to contact category: {e}")
+        
         if self.config["enabled"] and self.config["options"] != {}:
             dummyMessage = DummyMessage(copy(initial_message))
             dummyMessage.author = self.bot.modmail_guild.me
