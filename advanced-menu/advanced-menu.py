@@ -309,7 +309,7 @@ class AdvancedMenu(commands.Cog):
     async def on_thread_ready(self, thread, creator, category, initial_message):
         if creator is not None and creator != thread.recipient:
             # Auto move contact threads if enabled (threads created with contact command)
-            if self.config.get("auto_move_contact_threads", False) and self.config.get("contact_category_id"):
+            if self.config["auto_move_contact_threads"] and self.config["contact_category_id"]:
                 try:
                     await invoke_commands(f"move {self.config['contact_category_id']}", self.bot, thread, DummyMessage(copy(initial_message)))
                 except Exception as e:
