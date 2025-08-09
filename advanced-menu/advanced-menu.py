@@ -307,20 +307,14 @@ class AdvancedMenu(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_ready(self, thread, creator, category, initial_message):
-        # Auto move contact threads if enabled (threads created with contact command)
-        if self.config.get("auto_move_contact_threads", False) and self.config.get("contact_category_id"):
-            # Check if this is a contact thread (created by staff, not by user DM)
-            is_contact_thread = (creator is not None and creator != thread.recipient and hasattr(creator, 'guild_permissions'))
-            
-            if is_contact_thread:
+        if creator is not None and creator != thread.recipient:
+            # Auto move contact threads if enabled (threads created with contact command)
+            if self.config.get("auto_move_contact_threads", False) and self.config.get("contact_category_id"):
                 try:
-                    contact_category = self.bot.modmail_guild.get_channel(self.config["contact_category_id"])
-                    if contact_category and thread.channel and thread.channel.category != contact_category:
-                        await thread.channel.edit(category=contact_category)
+                    await invoke_commands(f"move {self.config['contact_category_id']}", self.bot, thread, DummyMessage(copy(initial_message)))
                 except Exception as e:
                     logger.error(f"Failed to move thread to contact category: {e}")
-        
-        if self.config["enabled"] and self.config["options"] != {}:
+        elif self.config["enabled"] and self.config["options"] != {}:
             dummyMessage = DummyMessage(copy(initial_message))
             dummyMessage.author = self.bot.modmail_guild.me
             dummyMessage.content = self.config["embed_text"]
