@@ -322,7 +322,6 @@ class AdvancedMenu(commands.Cog):
                     contact_category = self.bot.modmail_guild.get_channel(self.config["contact_category_id"])
                     if contact_category and thread.channel and thread.channel.category != contact_category:
                         await thread.channel.edit(category=contact_category)
-                        logger.info(f"Moved contact thread {thread.channel.name} to category {contact_category.name}")
                 except Exception as e:
                     logger.error(f"Failed to move thread to contact category: {e}")
         
