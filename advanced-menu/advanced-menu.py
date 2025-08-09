@@ -1,4 +1,5 @@
 from copy import copy
+import asyncio
 import traceback
 import discord
 from discord.ext import commands
@@ -6,8 +7,10 @@ from discord.ext.commands.view import StringView
 import json
 
 from core import checks
-from core.models import DummyMessage, PermissionLevel
+from core.models import DummyMessage, PermissionLevel, getLogger
 from core.utils import normalize_alias
+
+logger = getLogger(__name__)
 
 async def invoke_commands(alias, bot, thread, message):
     ctxs = []
@@ -38,6 +41,7 @@ class CustomModal(discord.ui.Modal):
         super().__init__(title=config["title"])
         self.bot = bot
         self.thread = thread
+        self.config = config
         for idx, field in enumerate(config["fields"][:5]):
             self.add_item(discord.ui.TextInput(
                 label=field["label"],
@@ -49,24 +53,171 @@ class CustomModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         try:
             responses = {item.label: item.value for item in self.children}
+
+            await interaction.response.defer()
             
-            content = "\n".join(f"**{k}**: {v}" for k, v in responses.items())
+            modal_config = self.config
+            
+            embed_config = modal_config.get("response_embed")
+            embeds = []
 
-            dummyMessage = DummyMessage(copy(self.thread._genesis_message))
-            dummyMessage.author = self.bot.modmail_guild.me
-            dummyMessage.content = content
+            if embed_config:
+                custom_embed = discord.Embed(
+                    title=modal_config.get("title", "Form Submission"),
+                    description=self.bot.formatter.format(embed_config.get("description", ""), recipient=self.thread.recipient),
+                    color=int(embed_config.get("color", str(self.bot.main_color)), 16) if isinstance(embed_config.get("color"), str) else embed_config.get("color", self.bot.main_color)
+                )
 
-            # clear message of residual attributes from the copy
-            dummyMessage.attachments = []
-            dummyMessage.components = []
-            dummyMessage.embeds = []
-            dummyMessage.stickers = []
+                custom_embed.set_author(
+                    name=self.bot.modmail_guild.name,
+                    icon_url=self.bot.modmail_guild.icon.url
+                )
 
-            await self.thread.reply(message=dummyMessage)
-            await interaction.response.send_message("Thank you! Your form has been submitted.", ephemeral=True)
+                footer_config = embed_config.get("footer", {})
+                if footer_config and footer_config.get("text"):
+                    custom_embed.set_footer(
+                        text=footer_config.get("text", ""),
+                        icon_url=footer_config.get("icon_url", "")
+                    )
+
+                thumbnail_url = embed_config.get("thumbnail_url")
+                if thumbnail_url:
+                    custom_embed.set_thumbnail(url=thumbnail_url)
+
+                image_url = embed_config.get("image_url")
+                if image_url:
+                    custom_embed.set_image(url=image_url)
+
+                if embed_config.get("show_timestamp", False):
+                    custom_embed.timestamp = discord.utils.utcnow()
+                
+                embeds.append(custom_embed)
+            
+            responses_embed = discord.Embed(
+                color=int(embed_config.get("color", str(self.bot.main_color)), 16) if isinstance(embed_config.get("color"), str) else embed_config.get("color", self.bot.main_color)
+            )
+            
+            for i, (label, value) in enumerate(responses.items()):
+                responses_embed.add_field(
+                    name=f'{i+1}. {label}', 
+                    value=value,
+                    inline=False
+                )
+                
+            responses_embed.set_footer(
+                text=self.bot.modmail_guild.name
+            )
+
+            embeds.append(responses_embed)
+
+            anonymous = modal_config.get("anonymous", False)
+            
+            await self.raw_reply_multiple(embeds, anonymous=anonymous)
+
+            if self.config["type"] == "command":
+                await invoke_commands(self.config["callback"], self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+
         except Exception:
             await interaction.response.send_message("An error occurred.", ephemeral=True)
             print(traceback.format_exc())
+
+    async def raw_reply_multiple(self, embeds: list, *, anonymous: bool = False):
+        """
+        Send multiple embeds as a response
+        """
+        # Check that recipients are still accessible
+        for guild in self.bot.guilds:
+            try:
+                if await self.bot.get_or_fetch_member(guild, self.thread.id):
+                    break
+            except discord.NotFound:
+                pass
+        else:
+            if self.thread.channel:
+                await self.thread.channel.send(
+                    embed=discord.Embed(
+                        color=self.bot.error_color,
+                        description="Your message could not be delivered since "
+                        "the recipient shares no servers with the bot.",
+                    )
+                )
+            return
+
+        user_msg_tasks = []
+        tasks = []
+
+        # Send to recipients
+        for user in self.thread.recipients:
+            user_msg_tasks.append(user.send(embeds=embeds))
+
+        try:
+            user_msg = await asyncio.gather(*user_msg_tasks)
+        except Exception as e:
+            logger.error(f"Message delivery failed: {e}")
+            user_msg = None
+            if isinstance(e, discord.Forbidden):
+                description = (
+                    "Your message could not be delivered as "
+                    "the recipient is only accepting direct "
+                    "messages from friends, or the bot was "
+                    "blocked by the recipient."
+                )
+            else:
+                description = (
+                    "Your message could not be delivered due "
+                    "to an unknown error. Check `?debug` for "
+                    "more information"
+                )
+            if self.thread.channel:
+                thread_msg = await self.thread.channel.send(
+                    embed=discord.Embed(
+                        color=self.bot.error_color,
+                        description=description,
+                    )
+                )
+        else:
+            # Send to the thread channel
+            if self.thread.channel:
+                thread_msg = await self.thread.channel.send(embeds=embeds)
+
+                content_parts = []
+
+                for embed in embeds:
+                    if embed.description:
+                        content_parts.append(f"**{embed.title}**\n\n{embed.description}")
+                    else:
+                        for field in embed.fields:
+                            content_parts.append(f"**{field.name}**\n{field.value}")
+
+                thread_msg.content = "\n\n".join(content_parts)
+
+                # Log the activity
+
+                tasks.append(
+                    self.bot.api.append_log(
+                        message=thread_msg,
+                        message_id=thread_msg.id,
+                        channel_id=self.thread.channel.id,
+                        type_="system",
+                    )
+                )
+
+            # Cancel scheduled closure if a message is sent
+            if self.thread.close_task is not None:
+                await self.thread.cancel_closure()
+                if self.thread.channel:
+                    tasks.append(
+                        self.thread.channel.send(
+                            embed=discord.Embed(
+                                color=self.bot.error_color,
+                                description="Scheduled close has been cancelled.",
+                            )
+                        )
+                    )
+
+        await asyncio.gather(*tasks)
+
+        return (user_msg, thread_msg)
 
 
 class Dropdown(discord.ui.Select):
@@ -92,7 +243,7 @@ class Dropdown(discord.ui.Select):
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
                 await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
                 await self.view.done()
-                return
+                return 
 
             await interaction.response.defer()
             await self.view.done()
@@ -118,7 +269,7 @@ class DropdownView(discord.ui.View):
     async def on_timeout(self):
         await self.msg.edit(view=None)
         if self.config["close_on_timeout"]:
-            await invoke_commands("close The menu selection timed out.", self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
+            await invoke_commands(f"close {self.config['close_on_timeout_message']}", self.bot, self.thread, DummyMessage(copy(self.thread._genesis_message)))
 
     async def done(self):
         self.stop()
@@ -129,7 +280,19 @@ class AdvancedMenu(commands.Cog):
         self.bot = bot
         self.db = self.bot.plugin_db.get_partition(self)
         self.config = None
-        self.default_config = {"enabled": False, "options": {}, "submenus": {}, "timeout": 20, "close_on_timeout": False, "anonymous_menu": False, "embed_text": "Please select an option.", "dropdown_placeholder": "Select an option to contact the staff team."}
+        self.default_config = {
+            "enabled": False,
+            "options": {},
+            "submenus": {},
+            "timeout": 20,
+            "close_on_timeout": False,
+            "close_on_timeout_message": "The menu selection timed out.",
+            "anonymous_menu": False,
+            "embed_text": "Please select an option.",
+            "dropdown_placeholder": "Select an option to contact the staff team.",
+            "auto_move_contact_threads": False,
+            "contact_category_id": None
+        }
 
     async def cog_load(self):
         self.config = await self.db.find_one({"_id": "advanced-menu"})
@@ -156,7 +319,14 @@ class AdvancedMenu(commands.Cog):
 
     @commands.Cog.listener()
     async def on_thread_ready(self, thread, creator, category, initial_message):
-        if self.config["enabled"] and self.config["options"] != {}:
+        if creator is not None and creator != thread.recipient:
+            # Auto move contact threads if enabled (threads created with contact command)
+            if self.config["auto_move_contact_threads"] and self.config["contact_category_id"]:
+                try:
+                    await invoke_commands(f"move {self.config['contact_category_id']}", self.bot, thread, DummyMessage(copy(thread._genesis_message)))
+                except Exception as e:
+                    logger.error(f"Failed to move thread to contact category: {e}")
+        elif self.config["enabled"] and self.config["options"] != {}:
             dummyMessage = DummyMessage(copy(initial_message))
             dummyMessage.author = self.bot.modmail_guild.me
             dummyMessage.content = self.config["embed_text"]
