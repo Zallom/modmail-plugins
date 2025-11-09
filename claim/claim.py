@@ -4,6 +4,37 @@ from discord.ext import commands
 from core import checks
 from core.checks import PermissionLevel
 
+def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
+    if (
+        permission_level is not PermissionLevel.OWNER
+        and ctx.channel.permissions_for(ctx.author).administrator
+        and ctx.guild == ctx.bot.modmail_guild
+    ):
+        # Administrators have permission to all non-owner commands in the Modmail Guild
+        logger.debug("Allowed due to administrator.")
+        return True
+
+    level_permissions = ctx.bot.config["level_permissions"]
+    checkables = {*ctx.author.roles, ctx.author}
+
+    for level in PermissionLevel:
+        if level >= permission_level and level.name in level_permissions:
+            # -1 is for @everyone
+            if -1 in level_permissions[level.name] or any(
+                str(check.id) in level_permissions[level.name] for check in checkables
+            ):
+                return True
+
+    return False
+
+async def check_reply(ctx):
+    thread = await ctx.bot.get_cog('ClaimThread').db.find_one({'thread_id': str(ctx.thread.channel.id)})
+
+    if thread:
+        return ctx.author.bot or str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)
+
+    return True
+
 class ClaimThread(commands.Cog):
     """Allows supporters to claim thread by sending claim in the thread channel"""
     def __init__(self, bot):
@@ -41,7 +72,7 @@ class ClaimThread(commands.Cog):
 
         if thread is None:
             await ctx.send('Thread is not claimed')
-        elif str(ctx.author.id) in thread['claimers'] or checks.has_permissions_predicate(PermissionLevel.MODERATOR)(ctx):
+        elif str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx):
             await self.db.delete_one({'thread_id': str(ctx.thread.channel.id)})
             await ctx.send('Unclaimed')
 
@@ -61,7 +92,7 @@ class ClaimThread(commands.Cog):
 
         thread = await self.db.find_one({'thread_id': str(ctx.thread.channel.id)})
 
-        if thread and (str(ctx.author.id) in thread['claimers'] or checks.has_permissions_predicate(PermissionLevel.MODERATOR)(ctx)):
+        if thread and (str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$addToSet': {'claimers': str(member.id)}})
             await ctx.send('Added to claimers')
 
@@ -73,7 +104,7 @@ class ClaimThread(commands.Cog):
 
         thread = await self.db.find_one({'thread_id': str(ctx.thread.channel.id)})
 
-        if thread and (str(ctx.author.id) in thread['claimers'] or checks.has_permissions_predicate(PermissionLevel.MODERATOR)(ctx)):
+        if thread and (str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$pull': {'claimers': str(member.id)}})
             await ctx.send('Removed from claimers')
 
@@ -85,17 +116,9 @@ class ClaimThread(commands.Cog):
 
         thread = await self.db.find_one({'thread_id': str(ctx.thread.channel.id)})
 
-        if thread and (str(ctx.author.id) in thread['claimers'] or checks.has_permissions_predicate(PermissionLevel.MODERATOR)(ctx)):
+        if thread and (str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$set': {'claimers': [str(member.id)]}})
             await ctx.send('Added to claimers')
-
-async def check_reply(ctx):
-    thread = await ctx.bot.get_cog('ClaimThread').db.find_one({'thread_id': str(ctx.thread.channel.id)})
-
-    if thread:
-        return ctx.author.bot or str(ctx.author.id) in thread['claimers'] or checks.has_permissions_predicate(PermissionLevel.MODERATOR)(ctx)
-
-    return True
 
 async def setup(bot):
     await bot.add_cog(ClaimThread(bot))
