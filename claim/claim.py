@@ -2,7 +2,9 @@ import discord
 from discord.ext import commands
 
 from core import checks
-from core.checks import PermissionLevel
+from core.models import PermissionLevel, getLogger
+
+logger = getLogger(__name__)
 
 def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
     if (
