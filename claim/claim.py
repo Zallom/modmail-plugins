@@ -6,7 +6,11 @@ from core.models import PermissionLevel, getLogger
 
 logger = getLogger(__name__)
 
-def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
+async def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
+    if await ctx.bot.is_owner(ctx.author) or ctx.author.id == ctx.bot.user.id:
+        # Bot owner(s) (and creator) has absolute power over the bot
+        return True
+
     if (
         permission_level is not PermissionLevel.OWNER
         and ctx.channel.permissions_for(ctx.author).administrator
@@ -28,14 +32,6 @@ def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERAT
                 return True
 
     return False
-
-async def check_reply(ctx):
-    thread = await ctx.bot.get_cog('ClaimThread').db.find_one({'thread_id': str(ctx.thread.channel.id)})
-
-    if thread:
-        return ctx.author.bot or str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)
-
-    return True
 
 class ClaimThread(commands.Cog):
     """Allows supporters to claim thread by sending claim in the thread channel"""
@@ -121,6 +117,14 @@ class ClaimThread(commands.Cog):
         if thread and (str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$set': {'claimers': [str(member.id)]}})
             await ctx.send('Added to claimers')
+
+async def check_reply(ctx):
+    thread = await ctx.bot.get_cog('ClaimThread').db.find_one({'thread_id': str(ctx.thread.channel.id)})
+
+    if thread:
+        return ctx.author.bot or str(ctx.author.id) in thread['claimers'] or check_user_level_permissions(ctx)
+
+    return True
 
 async def setup(bot):
     await bot.add_cog(ClaimThread(bot))
