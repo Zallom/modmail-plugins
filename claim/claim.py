@@ -2,9 +2,7 @@ import discord
 from discord.ext import commands
 
 from core import checks
-from core.models import PermissionLevel, getLogger
-
-logger = getLogger(__name__)
+from core.models import PermissionLevel
 
 async def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
     if await ctx.bot.is_owner(ctx.author) or ctx.author.id == ctx.bot.user.id:
@@ -17,7 +15,6 @@ async def check_user_level_permissions(ctx, permission_level = PermissionLevel.M
         and ctx.guild == ctx.bot.modmail_guild
     ):
         # Administrators have permission to all non-owner commands in the Modmail Guild
-        logger.debug("Allowed due to administrator.")
         return True
 
     level_permissions = ctx.bot.config["level_permissions"]
