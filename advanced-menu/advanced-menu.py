@@ -220,6 +220,29 @@ class CustomModal(discord.ui.Modal):
         return (user_msg, thread_msg)
 
 
+class ReopenModalView(discord.ui.View):
+    def __init__(self, bot, thread, modal_config, config, timeout=None):
+        super().__init__(timeout=timeout)
+        self.bot = bot
+        self.thread = thread
+        self.modal_config = modal_config
+        self.config = config
+        
+        button_label = config.get("reopen_modal_button_label", "Reopen modal")
+        button_emoji = config.get("reopen_modal_button_emoji", "📝")
+        
+        button = discord.ui.Button(
+            label=button_label,
+            emoji=button_emoji,
+            style=discord.ButtonStyle.primary
+        )
+        button.callback = self.reopen_modal_callback
+        self.add_item(button)
+
+    async def reopen_modal_callback(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(CustomModal(self.bot, self.thread, self.modal_config))
+
+
 class Dropdown(discord.ui.Select):
     def __init__(self, bot, msg, thread, config: dict, data: dict, is_home: bool):
         self.bot = bot
@@ -242,7 +265,8 @@ class Dropdown(discord.ui.Select):
             if self.data[self.values[0].lower().replace(" ", "_")]["type"] == "modal":
                 modal_config = self.config["modals"][self.data[self.values[0].lower().replace(" ", "_")]["callback"]]
                 await interaction.response.send_modal(CustomModal(self.bot, self.thread, modal_config))
-                await self.view.done()
+
+                await self.msg.edit(view=ReopenModalView(self.bot, self.thread, modal_config, self.config))
                 return 
 
             await interaction.response.defer()
@@ -291,7 +315,9 @@ class AdvancedMenu(commands.Cog):
             "embed_text": "Please select an option.",
             "dropdown_placeholder": "Select an option to contact the staff team.",
             "auto_move_contact_threads": False,
-            "contact_category_id": None
+            "contact_category_id": None,
+            "reopen_modal_button_label": "Reopen modal",
+            "reopen_modal_button_emoji": "📝"
         }
 
     async def cog_load(self):
