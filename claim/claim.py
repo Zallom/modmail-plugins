@@ -47,7 +47,7 @@ class ClaimThread(commands.Cog):
 
         cat = ctx.channel.category
 
-        if cat and str(cat.id) in self.bot.cogs['CategoryNotifier'].config['mappings']:
+        if self.bot.cogs['CategoryNotifier'] and cat and str(cat.id) in self.bot.cogs['CategoryNotifier'].config['mappings']:
             role_id = int(self.bot.cogs['CategoryNotifier'].config['mappings'][str(cat.id)])
             role = ctx.guild.get_role(role_id)
             if role:
