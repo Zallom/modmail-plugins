@@ -5,7 +5,7 @@ from core import checks
 from core.models import PermissionLevel
 
 async def check_user_level_permissions(ctx, permission_level = PermissionLevel.MODERATOR):
-    if await ctx.bot.is_owner(ctx.author) or ctx.author.id == ctx.bot.user.id:
+    if await ctx.bot.is_owner(ctx.author)
         # Bot owner(s) (and creator) has absolute power over the bot
         return True
 
