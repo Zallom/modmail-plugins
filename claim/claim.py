@@ -53,7 +53,7 @@ class ClaimThread(commands.Cog):
 
         if thread is None:
             await self.db.insert_one({'thread_id': str(ctx.thread.channel.id), 'claimers': [str(ctx.author.id)]})
-            await ctx.send('Claimed')
+            await ctx.send(f'Claimed by {ctx.author.mention}')
         else:
             await ctx.send('Thread is already claimed')
 
@@ -69,7 +69,7 @@ class ClaimThread(commands.Cog):
             await ctx.send('Thread is not claimed')
         elif str(ctx.author.id) in thread['claimers'] or await check_user_level_permissions(ctx):
             await self.db.delete_one({'thread_id': str(ctx.thread.channel.id)})
-            await ctx.send('Unclaimed')
+            await ctx.send(f'Unclaimed by {ctx.author.mention}')
 
         cat = ctx.channel.category
 
@@ -89,7 +89,7 @@ class ClaimThread(commands.Cog):
 
         if thread and (str(ctx.author.id) in thread['claimers'] or await check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$addToSet': {'claimers': str(member.id)}})
-            await ctx.send('Added to claimers')
+            await ctx.send(f'Added {member.mention} to claimers')
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
@@ -101,7 +101,7 @@ class ClaimThread(commands.Cog):
 
         if thread and (str(ctx.author.id) in thread['claimers'] or await check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$pull': {'claimers': str(member.id)}})
-            await ctx.send('Removed from claimers')
+            await ctx.send(f'Removed {member.mention} from claimers')
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
@@ -113,7 +113,7 @@ class ClaimThread(commands.Cog):
 
         if thread and (str(ctx.author.id) in thread['claimers'] or await check_user_level_permissions(ctx)):
             await self.db.find_one_and_update({'thread_id': str(ctx.thread.channel.id)}, {'$set': {'claimers': [str(member.id)]}})
-            await ctx.send('Added to claimers')
+            await ctx.send(f'Transferred thread to {member.mention}')
 
 async def check_reply(ctx):
     thread = await ctx.bot.get_cog('ClaimThread').db.find_one({'thread_id': str(ctx.thread.channel.id)})
