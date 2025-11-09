@@ -4,7 +4,7 @@ Create a menu using discord's selector menu. Includes sub menus too!
 
 ## Installation
 
-This plugin works on the modmail bot made by kyb3r. You can find the bot [here](https://github.com/kyb3r/modmail). Use the command below to install this plugin into your bot.
+This plugin works on the modmail bot made by kyb3r. You can find the bot [here](https://github.com/modmail-dev/modmail). Use the command below to install this plugin into your bot.
 
 `[p]plugins add advanced-menu`
 
@@ -69,9 +69,9 @@ Will ask for the option. Then edit an option of a submenu.
 `remove (submenu)`
 Will ask for the option. Then removes an option from the submenu.
 
-Most commands will have an interactive aspect to set the details of an option and will be self explanatory. If you require help, please join the modmail discord server [here](https://discord.gg/etJNHCQ) and use the plugin support channel.
+Most commands will have an interactive aspect to set the details of an option and will be self explanatory. If you require help, please join the modmail discord server [here](https://discord.gg/cnUpwrnpYb) and use the plugin support channel.
 
 ## Credits
-This plugin was created by sebkuip ([github.com/sebkuip](https://github.com/sebkuip/) or sebkuip#3632) and improved by Zallom ([github.com/Zallom](https://github.com/Zallom) or @zallom) and is licensed under the MIT license. Whilst not required, it would be appreciated if you could credit me if you use this plugin or its code anywhere.
+This plugin was created by sebkuip ([github.com/sebkuip](https://github.com/sebkuip/) or sebkuip#3632) and improved by Zallom ([github.com/Zallom](https://github.com/Zallom) or @zallom) and is licensed under the MIT license. Whilst not required, it would be appreciated if you could credit us if you use this plugin or its code anywhere.
 
 Code for alias/command invoking used from the original [menu plugin by fourjr](https://github.com/fourjr/modmail-plugins/tree/master/menu).
