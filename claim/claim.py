@@ -9,7 +9,9 @@ class ClaimThread(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = self.bot.plugin_db.get_partition(self)
+
         check_reply.fail_msg = 'This thread has been claimed by another user.'
+
         self.bot.get_command('reply').add_check(check_reply)
         self.bot.get_command('areply').add_check(check_reply)
         self.bot.get_command('fareply').add_check(check_reply)
@@ -42,6 +44,14 @@ class ClaimThread(commands.Cog):
         elif str(ctx.author.id) in thread['claimers'] or checks.has_permissions(PermissionLevel.MODERATOR)(ctx):
             await self.db.delete_one({'thread_id': str(ctx.thread.channel.id)})
             await ctx.send('Unclaimed')
+
+        cat = ctx.channel.category
+
+        if cat and str(cat.id) in self.bot.cogs['CategoryNotifier'].config['mappings']:
+            role_id = int(self.bot.cogs['CategoryNotifier'].config['mappings'][str(cat.id)])
+            role = ctx.guild.get_role(role_id)
+            if role:
+                await ctx.send(content=role.mention)
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
