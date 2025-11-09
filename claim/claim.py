@@ -53,7 +53,7 @@ class ClaimThread(commands.Cog):
 
         if thread is None:
             await self.db.insert_one({'thread_id': str(ctx.thread.channel.id), 'claimers': [str(ctx.author.id)]})
-            msg = await ctx.send(content=f'Claimed by {ctx.author.mention}', allowed_mentions=discord.AllowedMentions.none())
+            msg = await ctx.send(content=f'Claimed by {ctx.author.mention} ({ctx.author.display_name})', allowed_mentions=discord.AllowedMentions.none())
 
             await self.bot.api.append_log(
                 message=msg,
