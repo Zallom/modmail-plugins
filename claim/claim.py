@@ -45,7 +45,7 @@ class ClaimThread(commands.Cog):
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
-    @commands.command()
+    @commands.command(name="claim")
     async def claim(self, ctx):
         """Claims the thread"""
 
@@ -66,7 +66,7 @@ class ClaimThread(commands.Cog):
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
-    @commands.command(aliases=["uclaim"])
+    @commands.command(name="unclaim", aliases=["uclaim"])
     async def unclaim(self, ctx):
         """Unclaims the thread"""
 
@@ -95,7 +95,7 @@ class ClaimThread(commands.Cog):
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
-    @commands.command(aliases=["aclaim"], usage="[member]")
+    @commands.command(name="addclaim", aliases=["aclaim"], usage="[member]")
     async def addclaim(self, ctx, *, member: discord.Member):
         """Adds another user to the thread claimers"""
 
@@ -114,7 +114,7 @@ class ClaimThread(commands.Cog):
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
-    @commands.command(aliases=["rclaim"], usage="[member]")
+    @commands.command(name="removeclaim", aliases=["rclaim"], usage="[member]")
     async def removeclaim(self, ctx, *, member: discord.Member):
         """Removes a user from the thread claimers"""
 
@@ -133,7 +133,7 @@ class ClaimThread(commands.Cog):
 
     @checks.has_permissions(PermissionLevel.SUPPORTER)
     @checks.thread_only()
-    @commands.command(aliases=["tclaim"], usage="[member]")
+    @commands.command(name="transferclaim", aliases=["tclaim"], usage="[member]")
     async def transferclaim(self, ctx, *, member: discord.Member):
         """Removes all users from claimers and gives another member all control over thread"""
 
