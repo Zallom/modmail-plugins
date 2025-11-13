@@ -300,6 +300,7 @@ class DropdownView(discord.ui.View):
         await self.msg.edit(view=None)
 
 class AdvancedMenu(commands.Cog):
+    """Create a menu using discord's selector menu. Includes sub menus and modals."""
     def __init__(self, bot):
         self.bot = bot
         self.db = self.bot.plugin_db.get_partition(self)
