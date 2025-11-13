@@ -1,0 +1,44 @@
+{
+    "_id": "advanced-menu",
+    "anonymous_menu": false,
+    "close_on_timeout": false,
+    "dropdown_placeholder": "What is your issue?",
+    "embed_text": "Please select an issue type.",
+    "enabled": true,
+    "options": {
+        "appeal": {
+            "label": "Appeal",
+            "description": "Appeal a sanction",
+            "emoji": "\ud83d\udee0\ufe0f",
+            "type": "modal",
+            "callback": "appeal"
+        }
+    },
+    "submenus": {},
+    "timeout": 200,
+    "modals": {
+        "appeal": {
+            "title": "Appeal",
+            "fields": [
+                {
+                    "label": "What is your sanction? ",
+                    "style": 1
+                },
+                {
+                    "label": "Explain your appeal",
+                    "style": 2
+                }
+            ],
+            "response_embed": {
+                "description": "Thanks {recipient.mention} for appealing!"
+            },
+            "type": "command",
+            "callback": "move <channel_id>"
+        }
+    },
+    "close_on_timeout_message": "The menu selection timed out.",
+    "auto_move_contact_threads": true,
+    "contact_category_id": "ID",
+    "reopen_modal_button_emoji": "\ud83d\udcdd",
+    "reopen_modal_button_label": "Reopen modal"
+}
